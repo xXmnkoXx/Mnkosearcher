@@ -199,7 +199,7 @@
                 </td>
 
                 <td class="col-importe">
-                  {{ formatMoney(row.presupuestoBase ?? row.valorEstimado, row.moneda) }}
+                  {{ formatMoney(row.valorEstimado ?? row.valorEstimadoSinIva ?? row.presupuestoBase, row.moneda) }}
                 </td>
 
                 <td class="col-prov">
@@ -447,7 +447,9 @@ function getFechaLimiteISO(row: Licitacion): string | null {
 }
 
 function getRowAmount(row: any): number | null {
-  const m = row?.presupuestoBase ?? row?.valorEstimado
+  const m = row?.valorEstimado ?? row?.valorEstimadoSinIva ?? row?.presupuestoBase
+  if (typeof m === 'number') return Number.isFinite(m) ? m : null
+
   const amount = m?.amount
   const n = Number(amount)
   return Number.isFinite(n) ? n : null
@@ -574,10 +576,14 @@ function displayOrganismo(row: any): string {
   return org
 }
 
-function formatMoney(money: Money | null | undefined, fallbackCurrency: string | null | undefined) {
-  if (!money) return '-'
-  const amount = (money as any).amount
-  const currency = (money as any).currency || fallbackCurrency || 'EUR'
+function formatMoney(
+  money: Money | number | null | undefined,
+  fallbackCurrency: string | null | undefined
+) {
+  if (money == null) return '-'
+
+  const amount = typeof money === 'number' ? money : (money as any).amount
+  const currency = (money as any)?.currency || fallbackCurrency || 'EUR'
   if (amount === null || amount === undefined) return '-'
   try {
     return new Intl.NumberFormat('es-ES', {
@@ -690,7 +696,7 @@ function downloadCsv() {
 
   for (const r of data as any[]) {
     const fecha = formatFechaLimite(r)
-    const importe = formatMoney(r.presupuestoBase ?? r.valorEstimado, r.moneda)
+    const importe = formatMoney(r.valorEstimado ?? r.valorEstimadoSinIva ?? r.presupuestoBase, r.moneda)
     const provincia = formatProvincia(r.lugarEjecucion)
 
     lines.push(

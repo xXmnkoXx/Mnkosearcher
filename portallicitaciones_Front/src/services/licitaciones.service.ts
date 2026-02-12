@@ -80,6 +80,7 @@ export async function getUnificadas(params: {
   source?: string;
   q?: string | null;
   estado?: "all" | "en_plazo" | "vencidas";
+  estadoFase?: string | null;
   page?: number;
   size?: number;
 }) {
@@ -101,6 +102,7 @@ export async function getUnificadasPage(params: {
   source?: string;
   q?: string | null;
   estado?: "all" | "en_plazo" | "vencidas";
+  estadoFase?: string | null;
   page?: number;
   size?: number;
 }) {

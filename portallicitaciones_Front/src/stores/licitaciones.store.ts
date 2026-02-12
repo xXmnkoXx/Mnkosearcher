@@ -67,12 +67,21 @@ function normalize(x: LicitacionUnificada): LicitacionUi {
     fechaPublicacion: x.fechaPublicacion ?? null,
     fechaLimitePresentacion: x.fechaLimitePresentacion ?? null,
 
-    valorEstimado: null,
+    valorEstimado: x.valorEstimadoSinIva ?? null,
     presupuestoBase: null,
     moneda: "EUR",
   };
 }
 
+
+function buildBackendParams(estado: "all" | "en_plazo" | "vencidas") {
+  return estado === "en_plazo" ? { estadoFase: "Publicada" as const } : {};
+}
+
+function isEstadoFasePublicada(row: LicitacionUnificada): boolean {
+  const fase = String(row?.estadoFase ?? "").trim().toLowerCase();
+  return fase === "publicada";
+}
 function matchesLocal(row: any, q: string): boolean {
   if (!q) return true;
   const qq = q.trim().toLowerCase();
@@ -179,6 +188,7 @@ export const useLicitacionesStore = defineStore("licitaciones", {
             source: this.source,
             q,
             estado: "en_plazo",
+            ...buildBackendParams("en_plazo"),
             page: 0,
             size: 1, // 👈 mínimo: solo queremos totalElements
           }),
@@ -191,8 +201,8 @@ export const useLicitacionesStore = defineStore("licitaciones", {
           }),
         ]);
 
-        this.totalEnPlazo = Number(enPlazoRes.totalElements ?? 0);
-        this.totalVencidas = Number(vencidasRes.totalElements ?? 0);
+        this.totalEnPlazo = Number(enPlazoRes.page.totalElements ?? 0);
+        this.totalVencidas = Number(vencidasRes.page.totalElements ?? 0);
         this.totalGeneral = this.totalEnPlazo + this.totalVencidas;
       } catch {
         // si falla el conteo, no rompemos la pantalla
@@ -217,15 +227,21 @@ export const useLicitacionesStore = defineStore("licitaciones", {
           source: this.source,
           q: this.q?.trim() ? this.q.trim() : null,
           estado,
+          ...buildBackendParams(estado),
           page: this.page,
           size: this.size,
         });
 
-        const normalized = (res.content ?? []).map(normalize);
+        const filteredByEstadoFase =
+          estado === "en_plazo"
+            ? (res.page.content ?? []).filter((row) => isEstadoFasePublicada(row))
+            : res.page.content ?? [];
+
+        const normalized = filteredByEstadoFase.map(normalize);
 
         this.items = normalized;
-        this.totalElements = Number(res.totalElements ?? 0);
-        this.totalPages = Math.max(1, Number(res.totalPages ?? 1));
+        this.totalElements = Number(res.page.totalElements ?? 0);
+        this.totalPages = Math.max(1, Number(res.page.totalPages ?? 1));
       } catch (e: any) {
         this.error = e?.message ?? "Error cargando licitaciones";
       } finally {

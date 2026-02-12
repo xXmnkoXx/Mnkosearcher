@@ -67,7 +67,7 @@ function normalize(x: LicitacionUnificada): LicitacionUi {
     fechaPublicacion: x.fechaPublicacion ?? null,
     fechaLimitePresentacion: x.fechaLimitePresentacion ?? null,
 
-    valorEstimado: null,
+    valorEstimado: x.valorEstimadoSinIva ?? null,
     presupuestoBase: null,
     moneda: "EUR",
   };
@@ -191,8 +191,8 @@ export const useLicitacionesStore = defineStore("licitaciones", {
           }),
         ]);
 
-        this.totalEnPlazo = Number(enPlazoRes.totalElements ?? 0);
-        this.totalVencidas = Number(vencidasRes.totalElements ?? 0);
+        this.totalEnPlazo = Number(enPlazoRes.page.totalElements ?? 0);
+        this.totalVencidas = Number(vencidasRes.page.totalElements ?? 0);
         this.totalGeneral = this.totalEnPlazo + this.totalVencidas;
       } catch {
         // si falla el conteo, no rompemos la pantalla
@@ -221,11 +221,11 @@ export const useLicitacionesStore = defineStore("licitaciones", {
           size: this.size,
         });
 
-        const normalized = (res.content ?? []).map(normalize);
+        const normalized = (res.page.content ?? []).map(normalize);
 
         this.items = normalized;
-        this.totalElements = Number(res.totalElements ?? 0);
-        this.totalPages = Math.max(1, Number(res.totalPages ?? 1));
+        this.totalElements = Number(res.page.totalElements ?? 0);
+        this.totalPages = Math.max(1, Number(res.page.totalPages ?? 1));
       } catch (e: any) {
         this.error = e?.message ?? "Error cargando licitaciones";
       } finally {

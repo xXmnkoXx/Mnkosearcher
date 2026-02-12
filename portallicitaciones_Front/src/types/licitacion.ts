@@ -25,7 +25,8 @@ export type Licitacion = {
   fechas?: FechasProcedimiento | null
 
   presupuestoBase?: Money | null
-  valorEstimado?: Money | null
+  valorEstimado?: Money | number | null
+  valorEstimadoSinIva?: number | null
   moneda?: string | null
 
   lugarEjecucion?: string | null

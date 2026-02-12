@@ -47,8 +47,8 @@ export type LicitacionUi = LicitacionUnificada & {
 };
 
 function makeId(x: LicitacionUnificada): string {
-  if (x.idExterno) return String(x.idExterno);
-  const base = [x.fuente ?? "X", x.expediente ?? "", x.titulo ?? ""].join("|");
+  if ((x as any).idExterno) return String((x as any).idExterno);
+  const base = [x.fuente ?? "X", (x as any).expediente ?? "", (x as any).titulo ?? ""].join("|");
   return base || crypto.randomUUID();
 }
 
@@ -56,18 +56,18 @@ function normalize(x: LicitacionUnificada): LicitacionUi {
   return {
     ...x,
     id: makeId(x),
-    expediente: x.expediente,
-    titulo: x.titulo,
+    expediente: (x as any).expediente,
+    titulo: (x as any).titulo,
 
-    organismo: x.organoNombre ?? null,
-    organo: x.organoNombre ?? null,
-    entidad: x.departamento ?? null,
+    organismo: (x as any).organoNombre ?? null,
+    organo: (x as any).organoNombre ?? null,
+    entidad: (x as any).departamento ?? null,
 
-    lugarEjecucion: x.lugarEjecucion ?? null,
-    fechaPublicacion: x.fechaPublicacion ?? null,
-    fechaLimitePresentacion: x.fechaLimitePresentacion ?? null,
+    lugarEjecucion: (x as any).lugarEjecucion ?? null,
+    fechaPublicacion: (x as any).fechaPublicacion ?? null,
+    fechaLimitePresentacion: (x as any).fechaLimitePresentacion ?? null,
 
-    valorEstimado: x.valorEstimadoSinIva ?? null,
+    valorEstimado: (x as any).valorEstimadoSinIva ?? null,
     presupuestoBase: null,
     moneda: "EUR",
   };
@@ -94,6 +94,32 @@ function matchesLocal(row: any, q: string): boolean {
 
   return haystack.includes(qq);
 }
+
+
+function isPastDeadline(row: any): boolean {
+  const iso =
+    row?.fechaLimitePresentacion ||
+    row?.fechas?.fechaLimitePresentacion ||
+    row?.fechas?.fechaLimite ||
+    null;
+
+  if (!iso) return false; // si no hay fecha, no bloqueamos (puedes poner true si quieres ser estricto)
+
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const target = new Date(d);
+  target.setHours(0, 0, 0, 0);
+
+  return target.getTime() < today.getTime();
+}
+
+
+// ✅ Forzamos siempre estadoFase = "publicada"
+const ESTADO_FASE_FIJO = "publicada" as const;
 
 export const useLicitacionesStore = defineStore("licitaciones", {
   state: () => ({
@@ -179,6 +205,7 @@ export const useLicitacionesStore = defineStore("licitaciones", {
             source: this.source,
             q,
             estado: "en_plazo",
+            estadoFase: ESTADO_FASE_FIJO, // ✅ aquí
             page: 0,
             size: 1, // 👈 mínimo: solo queremos totalElements
           }),
@@ -186,6 +213,7 @@ export const useLicitacionesStore = defineStore("licitaciones", {
             source: this.source,
             q,
             estado: "vencidas",
+            estadoFase: ESTADO_FASE_FIJO, // ✅ y aquí
             page: 0,
             size: 1,
           }),
@@ -217,6 +245,7 @@ export const useLicitacionesStore = defineStore("licitaciones", {
           source: this.source,
           q: this.q?.trim() ? this.q.trim() : null,
           estado,
+          estadoFase: ESTADO_FASE_FIJO, // ✅ aquí también
           page: this.page,
           size: this.size,
         });

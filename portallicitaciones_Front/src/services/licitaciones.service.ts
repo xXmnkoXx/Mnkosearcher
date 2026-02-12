@@ -66,7 +66,20 @@ function unwrapWrappedPage<T>(data: any): WrappedPageResponse<T> {
   // ✅ soporta: {params,page:{...}} o {page:{...}} o directamente {...}
   if (data?.page?.content) return data as WrappedPageResponse<T>;
   if (data?.content) return { page: data as PageResponse<T>, params: undefined };
-  return { page: { content: [], totalPages: 1, totalElements: 0, size: 0, number: 0, first: true, last: true, numberOfElements: 0, empty: true }, params: undefined };
+  return {
+    page: {
+      content: [],
+      totalPages: 1,
+      totalElements: 0,
+      size: 0,
+      number: 0,
+      first: true,
+      last: true,
+      numberOfElements: 0,
+      empty: true,
+    },
+    params: undefined,
+  };
 }
 
 function cleanQ(q?: string | null): string | null {
@@ -75,35 +88,34 @@ function cleanQ(q?: string | null): string | null {
   return t ? t : null;
 }
 
-// ✅ Nuevo: devuelve wrapped {params, page}
-export async function getUnificadas(params: {
+// ✅ Tipos de params unificados (para evitar duplicar en 2 funciones)
+export type GetUnificadasParams = {
   source?: string;
   q?: string | null;
   estado?: "all" | "en_plazo" | "vencidas";
+  estadoFase?: string | null; // ✅ AÑADIDO (ej: "publicada")
   page?: number;
   size?: number;
-}) {
-  const resp = await http.get<WrappedPageResponse<LicitacionUnificada> | PageResponse<LicitacionUnificada>>(
-    "/api/licitaciones/unificadas",
-    {
-      params: {
-        ...params,
-        q: cleanQ(params.q),
-      },
-    }
-  );
+};
+
+// ✅ Nuevo: devuelve wrapped {params, page}
+export async function getUnificadas(params: GetUnificadasParams) {
+  const resp = await http.get<
+    WrappedPageResponse<LicitacionUnificada> | PageResponse<LicitacionUnificada>
+  >("/api/licitaciones/unificadas", {
+    params: {
+      ...params,
+      q: cleanQ(params.q),
+      // ✅ opcional: normaliza estadoFase (trim y null si vacío)
+      estadoFase: params.estadoFase != null ? cleanQ(params.estadoFase) : undefined,
+    },
+  });
 
   return unwrapWrappedPage<LicitacionUnificada>(resp.data);
 }
 
 // ✅ Compat: si en algún sitio quieres solo la page
-export async function getUnificadasPage(params: {
-  source?: string;
-  q?: string | null;
-  estado?: "all" | "en_plazo" | "vencidas";
-  page?: number;
-  size?: number;
-}) {
+export async function getUnificadasPage(params: GetUnificadasParams) {
   const wrapped = await getUnificadas(params);
   return wrapped.page;
 }
@@ -140,20 +152,15 @@ export type LicitacionCatalunya = {
   duradaContracte?: string;
 };
 
-export async function getCatalunya(params: {
-  q?: string | null;
-  page?: number;
-  size?: number;
-}) {
-  const resp = await http.get<PageResponse<LicitacionCatalunya> | WrappedPageResponse<LicitacionCatalunya>>(
-    "/api/licitaciones/catalunya",
-    {
-      params: {
-        ...params,
-        q: cleanQ(params.q),
-      },
-    }
-  );
+export async function getCatalunya(params: { q?: string | null; page?: number; size?: number }) {
+  const resp = await http.get<
+    PageResponse<LicitacionCatalunya> | WrappedPageResponse<LicitacionCatalunya>
+  >("/api/licitaciones/catalunya", {
+    params: {
+      ...params,
+      q: cleanQ(params.q),
+    },
+  });
 
   const wrapped = unwrapWrappedPage<LicitacionCatalunya>(resp.data);
   return wrapped.page;
